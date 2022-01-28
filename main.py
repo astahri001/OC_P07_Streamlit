@@ -10,8 +10,8 @@ import shap
 import streamlit as st
 import streamlit.components.v1 as components
 
-model_load = pickle.load(open('banking_model.md', 'rb'))
-shap_values = pickle.load(open('shap_values', 'rb'))
+model_load = pickle.load(open('model_shap.md', 'rb'))
+shap_values = pickle.load(open('shap_val_f', 'rb'))
 
 features = ['EXT_SOURCE_3', 'AMT_REQ_CREDIT_BUREAU_QRT', 'AMT_REQ_CREDIT_BUREAU_YEAR', 'EXT_SOURCE_2',
             'DAYS_EMPLOYED', 'DAYS_LAST_PHONE_CHANGE', 'OBS_30_CNT_SOCIAL_CIRCLE', 'REGION_POPULATION_RELATIVE',
@@ -36,7 +36,7 @@ st.sidebar.header("customer's ID")
 
 # Load Dataframe
 
-input_id = st.sidebar.text_input("Please enter the customer's id", '272011')
+input_id = st.sidebar.text_input("Please enter the customer's ID", '136383')
 input_id = int(input_id)
 
 
@@ -49,7 +49,6 @@ def get_data(df):
 def get_green_color(text):
     st.markdown(f'<h1 style="color:#23b223;font-size:20px;">{text}</h1>',
                 unsafe_allow_html=True)
-
 
 
 def get_red_color(url):
@@ -90,40 +89,50 @@ def st_shap(plot, height=None):
 
 
 def get_shap_fig(id_c):
-    data_1 = data.drop('TARGET', axis=1)
     id_i = {}
     i = 0
-    for idx in data_1.index:
+    for idx in x_data.index:
         id_i[idx] = i
         i += 1
-    figure_3 = shap.force_plot(shap_values[id_i[id_c]])
-    return figure_3
+    figure_shap = shap.force_plot(explainer.expected_value[0], shap_values[1][id_i[id_c]], x_data.iloc[id_i[id_c]],
+                                  link="logit")
+
+    return figure_shap
 
 
 # Appel des fonstion définies:
 
-data = get_data('Data.csv')
-bank_decision, probability = predict(model_load, input_id, data)
-st.subheader(f'Bank decision for customer with ID: {input_id}')
+data = get_data('data_shap.csv')
+x_data = get_data('X_shap.csv')
 
-# Décision de la banque et score:
-st.write(f'##### Probability of default: {round(probability[0] * 100, 1)} (%)')
-if bank_decision == 'Loan approved':
-    get_green_color(f'Bank decision: {bank_decision}')
+# Si le ID n'est pas dans la liste afficher un message:
+if input_id not in data.index.tolist():
+    get_red_color(f"The ID {input_id} does not exist! Please enter the customer's ID")
 else:
-    get_red_color(f'Bank decision: {bank_decision}')
 
-# Affichage des graphes shap pour l'explicabilité du modèle:
+    # Décision de la banque et score:
 
-st.subheader("Features importance")
-st_shap(get_shap_fig(input_id), 600)
-
-# Comparaison du client avec la moyenne positif et négatif:
-st.subheader("More details for costumer:")
-st.text('We will now compare the value of each feature with mean accepted and mean refused')
-features_options = st.selectbox('Choose the feature you want to compare:', features)
-get_mean(features_options, data, input_id)
+    bank_decision, probability = predict(model_load, input_id, data)
+    st.subheader(f'Bank decision for customer with ID: {input_id}')
 
 
-#st_shap(shap.force_plot(shap_values), 600)
-# st_shap(shap.plots.beeswarm(shap_values))
+    st.write(f'##### Probability of default: {round(probability[0] * 100, 1)} (%)')
+    if bank_decision == 'Loan approved':
+        get_green_color(f'Bank decision: {bank_decision}')
+    else:
+        get_red_color(f'Bank decision: {bank_decision}')
+
+    # Affichage des graphes shap pour l'explicabilité du modèle:
+
+    explainer = shap.TreeExplainer(model_load)
+    # st.write(explainer.expected_value[0],shap_values[1])
+
+
+    st.subheader("Features importance")
+    st_shap(get_shap_fig(input_id), 200)
+
+    # Comparaison du client avec la moyenne positif et négatif:
+    st.subheader("More details for costumer:")
+    st.text('We will now compare the value of each feature with mean accepted and mean refused')
+    features_options = st.selectbox('Choose the feature you want to compare:', features)
+    get_mean(features_options, data, input_id)
