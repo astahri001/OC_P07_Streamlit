@@ -103,7 +103,7 @@ def get_shap_fig(id_c):
 # Appel des fonstion définies:
 
 data = get_data('data_shap.csv')
-x_data = get_data('X_shap.csv')
+x_data = data.drop('TARGET',axis=1)
 
 # Si le ID n'est pas dans la liste afficher un message:
 if input_id not in data.index.tolist():
